@@ -1,0 +1,78 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: front-ci-
+  namespace: tekton-ci
+spec:
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi
+  serviceAccountName: pipeline
+  pipelineSpec:
+    workspaces:
+      - name: shared-workspace
+    tasks:
+      - name: fetch-repository
+        taskRef:
+          name: git-clone
+        workspaces:
+          - name: output
+            workspace: shared-workspace
+        params:
+          - name: url
+            value: git@github.com:HazemFelhi/front.git
+          - name: revision
+            value: "main"
+          - name: deleteExisting
+            value: "true"
+      - name: install-dependencies
+        taskRef:
+          name: npm
+        workspaces:
+          - name: source
+            workspace: shared-workspace
+        params:
+          - name: PATH_CONTEXT
+            value: "."
+          - name: ARGS
+            value:
+              - clean-install
+          - name: IMAGE
+            value: "docker.io/library/node:14" #"docker.io/library/node:12-alpine"
+        runAfter:
+          - fetch-repository
+      - name: npm-build
+        taskRef:
+          name: npm
+        workspaces:
+          - name: source
+            workspace: shared-workspace
+        params:
+          - name: PATH_CONTEXT
+            value: "."
+          - name: ARGS
+            value:
+              - run
+              - build
+              - '--prod'
+        runAfter:
+          - install-dependencies
+      - name: buildah-build-push
+        taskRef:
+          name: buildah      
+        runAfter:
+          - npm-build
+        params:
+          - name: IMAGE
+            value: 'docker.io/hazemfelhi/cf'
+          - name: TLSVERIFY
+            value: 'false'
+        workspaces:
+        - name: source
+          workspace: shared-workspace

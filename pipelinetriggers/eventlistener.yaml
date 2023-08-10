@@ -1,0 +1,28 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: github-listener-interceptor
+  namespace: tekton-ci
+spec:
+  serviceAccountName: tekton-github-triggers
+  resources:
+    kubernetesResource:
+      serviceType: NodePort
+  triggers:
+    - name: github-listener
+      interceptors:
+      - github:
+          secretRef:
+            secretName: github-trigger-secret
+            secretKey: secretToken
+          eventTypes:
+          - push
+      - cel:
+          filter: "body.ref == 'refs/heads/main'"
+      bindings:
+      - ref: build-deploy-binding
+      template:
+        ref: build-deploy-template
+
+
+  

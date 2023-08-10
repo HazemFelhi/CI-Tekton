@@ -1,0 +1,31 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: build-deploy-
+spec:
+  pipelineRef:
+    name: build-deploy
+  serviceAccountName: pipeline
+  params:
+  - name: revision
+    value: main
+  - name: appGitUrl
+    value: https://github.com/HazemFelhi/ms-categorie.git #git@github.com:HazemFelhi/apigw.git #git@github.com:HazemFelhi/coffee-shop.git 
+  - name: appImage
+    value: docker.io/hazemfelhi/ms-categorie:v3 #coffee-shop #'docker.ci.com/app'
+  # - name: sonarqube-project-key
+  #   value: sqp_99fa1e97bfe3c4a2de99abe4031c03f8b47173d0
+  # - name: sonarqube-url
+  #   value: http://localhost:9000
+  workspaces:
+  - name: maven-settings
+    emptyDir: {}
+  - name: app-source
+    PersistentVolumeClaim:
+      claimName: maven-source-pvc
+  - name: maven-local-m2
+    persistentvolumeclaim:
+      claimName: maven-local-m2-pvc
+  # - name: sonar-settings
+  #   persistentVolumeClaim:
+  #     claimName: sonar-settings-pvc

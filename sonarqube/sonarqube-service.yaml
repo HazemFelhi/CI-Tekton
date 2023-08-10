@@ -1,0 +1,13 @@
+# sonarqube-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonarqube-service
+  namespace: sonarqube # Use the namespace created in Step 1 (if applicable)
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 9000
+      targetPort: 9000
+  selector:
+    app: sonarqube

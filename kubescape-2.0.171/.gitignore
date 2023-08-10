@@ -1,0 +1,8 @@
+*.vs*
+*kubescape*
+*debug*
+*vendor*
+*.pyc*
+.idea
+.history
+ca.srl

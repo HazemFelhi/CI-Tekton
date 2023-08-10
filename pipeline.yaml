@@ -1,0 +1,105 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: build-deploy
+  namespace: tekton-ci
+spec:
+  params:
+  - name: revision
+  - name: appGitUrl
+  - name: appImage
+  # - name: sonarqube-project-key
+  # - name: sonarqube-url
+  workspaces:
+  - name: app-source
+  - name: maven-settings
+  - name: maven-local-m2
+  #- name: sonar-settings
+  
+  tasks:
+  # - name: build-java-app
+  #   taskRef:
+  #     name: build-java-app
+  #   params:
+  #   - name: revision
+  #     value: $(params.revision)
+  #   - name: appGitUrl
+  #     value: $(params.appGitUrl)
+  #   - name: appImage
+  #     value: $(params.appImage)
+  #   workspaces:
+  #   - name: app-source
+  #     workspace: app-source
+
+  - name: git-clone
+    taskRef:
+      name: git-clone        
+    params:
+      - name: url
+        value: $(params.appGitUrl)
+      - name: revision
+        value: $(params.revision)
+      - name: deleteExisting
+        value: 'true'
+    workspaces:
+      - name: output
+        workspace: app-source
+
+  - name: mvn-test
+    taskRef:
+      name: mavenn       
+    runAfter:
+      - git-clone
+    params:
+      - name: GOALS
+        value: ['-B', 'clean']
+    workspaces:
+      - name: maven-settings
+        workspace: maven-settings
+      - name: source
+        workspace: app-source
+  
+  - name: mvn-package
+    taskRef:
+      name: mavenn        
+    runAfter:
+      - mvn-test
+    params:
+      - name: GOALS
+        value: ['-B', '-DskipTests', 'clean', 'package']
+    workspaces:
+      - name: maven-settings
+        workspace: maven-settings
+      - name: source
+        workspace: app-source
+  
+  # - name: sonarqube-scanner-task
+  #   taskRef:
+  #     name: sonarqube-scanner
+  #   runAfter:
+  #     - mvn-package
+  #   params:
+  #     - name: sonarqube-url
+  #       value: '$(params.sonarqube-url)'  # Replace with your SonarQube server URL
+  #     - name: sonarqube-project-key
+  #       value: '$(params.sonarqube-project-key)'   # Replace with your SonarQube project key
+  #   workspaces:
+  #     - name: source
+  #       workspace: app-source
+  #     - name: sonar-settings
+  #       workspace: sonar-settings
+  
+  - name: buildah-build-push
+    taskRef:
+      name: buildah      
+    runAfter:
+      - mvn-package
+    params:
+      - name: IMAGE
+        value: '$(params.appImage)'
+      - name: TLSVERIFY
+        value: 'false'
+    workspaces:
+      - name: source
+        workspace: app-source
+  
